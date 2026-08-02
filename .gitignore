@@ -1,0 +1,33 @@
+# Secrets and personal configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.crt
+
+# Runtime data and backups
+backups/
+*.tar
+*.tar.gz
+*.sqlite3
+*.db
+logs/
+
+# Python and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Test and local tooling
+.pytest_cache/
+.mypy_cache/
+.coverage
+.ruff_cache/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

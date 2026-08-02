@@ -1,0 +1,17 @@
+[Unit]
+Description=Ops Demo Web Application 8002
+After=network.target
+
+[Service]
+Type=simple
+User=opsdemo
+Group=opsdemo
+WorkingDirectory=/opt/ops-demo/apps/ops-demo2
+ExecStart=/opt/ops-demo/venv/bin/gunicorn --workers 2 --chdir /opt/ops-demo/apps/ops-demo2 --bind 127.0.0.1:8002 --access-logfile /var/log/ops-demo/ops-demo2-access.log --error-logfile /var/log/ops-demo/ops-demo2-error.log app:app
+Restart=on-failure
+RestartSec=5
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
