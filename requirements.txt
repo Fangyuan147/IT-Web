@@ -1,2 +1,4 @@
+# 项目根目录，注释Flask和gunicorn的版本范围，确保兼容性
+
 Flask>=2.3,<4
 gunicorn>=21,<24

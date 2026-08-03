@@ -6,7 +6,6 @@
 *.pem
 *.p12
 *.crt
-
 # Runtime data and backups
 backups/
 *.tar

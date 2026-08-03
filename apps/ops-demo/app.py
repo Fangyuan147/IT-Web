@@ -13,7 +13,7 @@ def index():
     return f"""
     <html lang="zh-CN">
       <head><meta charset="UTF-8"><title>{SERVICE_NAME}</title></head>
-      <body><h1>Ubuntu IT 运维实战项目</h1>
+      <body><h1>8000</h1>
       <p>当前后端：{SERVICE_NAME}，监听端口：{SERVICE_PORT}</p></body>
     </html>
     """
@@ -21,5 +21,5 @@ def index():
 
 @app.get("/health")
 def health():
-    return jsonify(status="ok", service=SERVICE_NAME, port=SERVICE_PORT,
+    return jsonify(status="8000 ok", service=SERVICE_NAME, port=SERVICE_PORT,
                    time=datetime.now(timezone.utc).isoformat())
