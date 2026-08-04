@@ -31,7 +31,7 @@ curl --fail http://localhost/health
 先备份配置，再制造一个可控的语法错误：
 
 ```bash
-sudo cp -a /etc/nginx/sites-available/ops-demo.conf /tmp/ops-demo.conf.bak
+sudo cp -a /etc/nginx/sites-available/ops-demo /tmp/ops-demo.conf.bak
 sudo nginx -t
 ```
 

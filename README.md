@@ -26,6 +26,7 @@ ops-demo/
 │   ├── back.sh
 │   ├── check.sh
 │   ├── deploy.sh
+│   ├── install.sh
 │   └── health-check.sh
 ├── docs/
 │   ├── architecture.md
@@ -108,27 +109,33 @@ NGINX_PORT=80
 RUN_USER="opsdemo"
 PROJECT_ROOT="/opt/ops-demo"
 VENV_PATH="$PROJECT_ROOT/venv"
+LOG_ROOT="/var/log/ops-demo"
+BACKUP_ROOT="/var/backups/ops-demo"
+BACKUP_RETENTION_DAYS=7
+PYTHON_BIN="/usr/bin/python3"
 ~~~
 
 增加后端实例或调整权重时，应先修改站点列表，再检查部署脚本、健康检查脚本和文档是否使用同一个配置路径。
 
 ## 当前已知注意事项
 
-当前仓库中的 deploy.sh、health-check.sh、check.sh 和 backup.sh 加载的是：
+当前仓库中的 `deploy.sh`、`health-check.sh`、`check.sh` 和 `backup.sh` 统一加载：
 
 ~~~bash
-config/sites.conf
-~~~
-
-但当前仓库实际存在的参数文件是：
-
-~~~text
 config/nginx/sites.conf
 ~~~
 
-因此，在统一配置路径之前，不要直接在 Ubuntu 上执行 sudo ./scripts/deploy.sh。此外，部署脚本使用的 LOG_ROOT、BACKUP_ROOT、PYTHON_BIN 和 GUNICORN_VERSION 也应在实际加载的配置文件中定义。
+仓库还提供独立的系统依赖安装脚本：
 
-这属于当前项目的待修复项，不能把部署脚本描述为已经完成真实验证的一键部署。
+~~~bash
+scripts/install.sh
+~~~
+
+当前不再存在 `config/sites.conf` 与 `config/nginx/sites.conf` 的路径不一致问题。`install.sh` 目前需要单独执行，`deploy.sh` 不会自动调用它；因此首次部署前应先安装系统依赖，再执行部署脚本。
+
+执行部署前仍应先完成 Bash 语法检查，并确认 `scripts/install.sh` 已纳入版本控制。
+
+需要注意的是，脚本尚未在本项目的真实 Ubuntu 主机上完成部署验收；静态检查通过不等于服务已经成功运行。
 
 ## 环境准备
 
@@ -139,7 +146,7 @@ sudo apt update
 sudo apt install -y nginx python3 python3-venv python3-pip curl ufw logrotate
 ~~~
 
-项目 Python 依赖记录在 requirements.txt 中，包括 Flask 和 Gunicorn 的版本范围。
+项目 Python 依赖记录在 `requirements.txt` 中，当前固定 Flask 和 Gunicorn 版本。
 
 ## Windows 与 Ubuntu 的分工
 
@@ -173,10 +180,10 @@ git diff --check
 先检查 Bash 语法：
 
 ~~~bash
-bash -n scripts/deploy.sh scripts/health-check.sh scripts/check.sh scripts/backup.sh
+bash -n scripts/install.sh scripts/deploy.sh scripts/health-check.sh scripts/check.sh scripts/backup.sh
 ~~~
 
-确认配置路径和脚本中的 source 路径一致后，再执行：
+确认语法检查通过、配置文件路径正确，并已完成系统依赖安装后，再执行：
 
 ~~~bash
 chmod +x scripts/*.sh
@@ -185,18 +192,17 @@ sudo ./scripts/deploy.sh
 
 部署脚本的目标流程是：
 
-1. 检查 root 权限和必要命令。
-2. 创建或复用受限系统用户 opsdemo。
-3. 将应用、配置、脚本和依赖清单复制到 /opt/ops-demo。
-4. 创建或复用 /opt/ops-demo/venv。
-5. 安装 Flask 和 Gunicorn 依赖。
-6. 根据站点列表生成三个 systemd 服务配置。
-7. 根据站点列表生成 Nginx upstream 配置。
-8. 安装 logrotate 配置。
-9. 执行 nginx -t。
-10. 执行 systemctl daemon-reload，启用并重启三个后端服务。
-11. 启用并重启 Nginx。
-12. 执行健康检查。
+1. 创建或复用受限系统用户 `opsdemo`。
+2. 将应用、配置、脚本和依赖清单复制到 `/opt/ops-demo`。
+3. 创建或复用 `/opt/ops-demo/venv`。
+4. 安装 Flask 和 Gunicorn 依赖。
+5. 根据站点列表生成三个 systemd 服务配置。
+6. 根据站点列表生成 Nginx upstream 配置。
+7. 安装 logrotate 配置。
+8. 执行 `nginx -t`。
+9. 执行 `systemctl daemon-reload`，启用并重启三个后端服务。
+10. 启用并重启 Nginx。
+11. 执行检查脚本。
 
 在真实 Ubuntu 主机上成功执行并验证前，不应把上述流程描述为已经完成的自动化部署能力。
 

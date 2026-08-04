@@ -6,8 +6,9 @@
 
 set -Eeuo pipefail
 
+# BASH_SOURCE[0] 表示当前脚本的位置
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"     #根目录ops-demo
 source "$REPO_ROOT/config/nginx/sites.conf"
 
 
@@ -18,17 +19,11 @@ LOGROTATE_CONF="/etc/logrotate.d/ops-demo"
 # ============================================================ #
 
 # EUID 表示当前用户的有效用户UID，0表示root用户
+# 检测当前用户权限
 if [[ "${EUID}" -ne 0 ]]; then
     echo "请使用 sudo 执行此脚本。" >&2
     exit 1
 fi
-
-for command in cp install mkdir nginx python3 systemctl useradd; do
-    command -v "$command" >/dev/null 2>&1 || {
-        echo "缺少命令：$command" >&2
-        exit 1
-    }
-done
 
 # 检测项目根目录和requirements.txt文件是否存在
 [[ -d "$REPO_ROOT" ]] || {
@@ -40,9 +35,10 @@ done
     exit 1
 }
 
+# 创建运行用户和组
 if ! getent passwd "$RUN_USER" >/dev/null; then
     useradd --system --user-group --home-dir "$PROJECT_ROOT" \
-        --shell /usr/sbin/nologin "$RUN_USER"
+        --shell /usr/sbin/nologin "$RUN_USER"           # --shell 禁止用户登录终端
 fi
 
 RUN_GROUP="$(id -gn "$RUN_USER")"
@@ -62,24 +58,24 @@ fi
 chmod +x "$PROJECT_ROOT/scripts"/*.sh
 chown -R "$RUN_USER:$RUN_GROUP" "$PROJECT_ROOT/apps" "$LOG_ROOT"
 
+
 # 检测python环境是否可执行
 if [[ ! -x "$PYTHON_BIN" ]]; then
     echo "Python 不存在或不可执行：$PYTHON_BIN" >&2
     exit 1
 fi
 
-# 检测venv虚拟环境是否存在，不存在就创建
+# 检测venv虚拟环境中python是否可执行，如果不能则创建虚拟环境和下载python环境
 if [[ ! -x "$VENV_PATH/bin/python" ]]; then
     echo "创建虚拟环境：$VENV_PATH"
     "$PYTHON_BIN" -m venv "$VENV_PATH"
 fi
-# 更新配置环境
+# 升级pip和安装依赖包
 "$VENV_PATH/bin/python" -m pip install --upgrade pip
-"$VENV_PATH/bin/pip" install -r "$PROJECT_ROOT/requirements.txt" \
-    "gunicorn==$GUNICORN_VERSION"
+"$VENV_PATH/bin/pip" install -r "$PROJECT_ROOT/requirements.txt"
 chown -R "$RUN_USER:$RUN_GROUP" "$VENV_PATH"
 
-# 编写service脚本代码
+# 编写systemd脚本代码
 for site in "${SITES[@]}"; do
     IFS='|' read -r SERVICE_NAME APP_PATH APP_PORT UPSTREAM_WEIGHT <<< "$site"
 
@@ -144,16 +140,23 @@ EOF
 install -m 0644 "$REPO_ROOT/config/logrotate/ops-demo" "$LOGROTATE_CONF"
 ln -sfn "$NGINX_CONF" "$NGINX_LINK"
 
+# 检测脚本生成服务情况
 nginx -t
 systemctl daemon-reload
 
+# 运行服务
 for site in "${SITES[@]}"; do
     IFS='|' read -r SERVICE_NAME APP_PATH APP_PORT UPSTREAM_WEIGHT <<< "$site"
     systemctl enable "$SERVICE_NAME"
     systemctl restart "$SERVICE_NAME"
 done
 
+# 设置开机自启
 systemctl enable nginx
 systemctl restart nginx
 
-"$PROJECT_ROOT/scripts/health-check.sh"
+echo "项目部署完成"
+
+echo "正在检测服务运行状态和健康状况..."
+# 运行结束后，检测服务运行状况
+"$SCRIPT_DIR/check.sh"

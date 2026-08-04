@@ -32,11 +32,16 @@ Nginx 配置中的后端权重为：
 ## 4. 运维闭环
 
 - 部署：`scripts/deploy.sh`
+  - 加载 `config/nginx/sites.conf`
+  - 在首次部署前单独执行 `scripts/install.sh` 安装系统依赖
+  - 复制应用代码、配置、脚本和依赖清单
+  - 创建共享 Python 虚拟环境并安装依赖
+  - 根据站点列表动态生成 `/etc/systemd/system/*.service`
+  - 根据站点列表动态生成 `/etc/nginx/sites-available/ops-demo`
+  - 安装 logrotate 配置，执行 Nginx 语法检查并重启相关服务
 - 验收：`scripts/check.sh`
 - 健康检查：`scripts/health-check.sh`
 - 备份：`scripts/backup.sh`
 - 日志轮转：`config/logrotate/ops-demo`
-- 服务定义：`config/systemd/`
-- 代理配置：`config/nginx/ops-demo.conf`
 
 当前备份脚本主要备份项目代码、配置和脚本，不等同于整台主机灾备。若要恢复完整运行环境，还应备份 `/etc/systemd/system/`、`/etc/nginx/`、`/etc/logrotate.d/` 和实际的定时任务，并验证恢复流程。

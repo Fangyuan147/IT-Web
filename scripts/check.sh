@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-# nginx功能检测脚本
+# nginx  服务检测
 
 
 set -Eeuo pipefail

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-#nginx服务状态和健康检测脚本
+# nginx服务状态和健康检测脚本
 
 
 set -Eeuo pipefail
@@ -9,13 +9,6 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # 记录当前脚本所在目录
 source "$SCRIPT_DIR/../config/nginx/sites.conf"
 
-# 检测命令
-for command in curl systemctl; do
-    command -v "$command" >/dev/null 2>&1 || {
-        echo "缺少命令：$command" >&2
-        exit 1
-    }
-done
 
 # 检测nginx运行状态
 systemctl is-active --quiet nginx || {
@@ -41,7 +34,7 @@ for site in "${SITES[@]}"; do
     echo "PASS: $SERVICE_NAME :$APP_PORT"
 done
 
-# 检测nginx端口状态
+# 检测nginx端口状态 80端口
 if ! curl --fail --silent --show-error \
     --connect-timeout 3 --max-time 5 \
     "http://127.0.0.1:${NGINX_PORT}/health" >/dev/null 2>&1; then
