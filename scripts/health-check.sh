@@ -50,14 +50,19 @@ if ! curl --fail --silent --show-error -G \
     --data-urlencode 'query=up{job="node"}' >/dev/null; then
     echo "Prometheus 未采集 Node Exporter" >&2
     exit 1
+fi
 
 if ! curl --fail --silent --show-error \
-    --connect-timeout 3 --max-time 5 \ 
+    --connect-timeout 3 --max-time 5 \
     "http://127.0.0.1:${PROMETHEUS_BLACKBOX_PORT}/metrics"; then
     echo "Prometheus Blackbox Exporter DOWN" >&2
     exit 1
 fi
 
+if ! curl --fail "http://127.0.0.1:${GRAFANA_PORT}/api/health";then
+    echo "Grafana 连接 Prometheus 失败"
+    exit 1
+fi
 
 for site in "${SITES[@]}"; do
     IFS='|' read -r SERVICE_NAME APP_PATH APP_PORT UPSTREAM_WEIGHT <<< "$site"

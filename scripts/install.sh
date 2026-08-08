@@ -45,7 +45,7 @@ for command in nginx python3 curl ip ss logrotate cron ; do
     }
 done
 
-for command in prometheus prometheus-node-exporter prometheus-blackbox-exporter grafana-server; do
+for command in prometheus promtool prometheus-node-exporter blackbox_exporter grafana-server; do
     command -v "$command" >/dev/null 2>&1 || {
         echo "缺少命令：$command" >&2
         exit 1

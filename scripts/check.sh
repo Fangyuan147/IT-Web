@@ -47,7 +47,7 @@ for site in "${SITES[@]}"; do
     echo "PASS: backend ${SERVICE_NAME} ${APP_PORT}"
 done
 
-if if curl --fail --silent --show-error -G \
+if curl --fail --silent --show-error -G \
     --connect-timeout 3 --max-time 5 \
     "http://127.0.0.1:${PROMETHEUS_PORT}/api/v1/query" \
     --data-urlencode 'query=up' >/dev/null; then
@@ -58,17 +58,19 @@ else
 fi
 
 
-if if curl --fail --silent --show-error -G \
+if curl --fail --silent --show-error -G \
     --connect-timeout 3 --max-time 5 \
     "http://127.0.0.1:${PROMETHEUS_PORT}/api/v1/query" \
-    --data-urlencode 'query=up{job=ops-demo-http}' >/dev/null; then
+    --data-urlencode 'query=up{job="ops-demo-http"}' >/dev/null; then
     echo "ops-demo-http  UP"
 else
     echo "ops-demo-http  DOWN" >&2
     exit 1
 fi
 
-if curl --fail http://127.0.0.1:${PROMETHEUS_NODE_PORT}/metrics; then
+if curl --fail --silent --show-error \
+    --connect-timeout 3 --max-time 5 \
+    "http://127.0.0.1:${PROMETHEUS_NODE_PORT}/metrics" >/dev/null; then
     echo "Prometheus Node Exporter UP"
 else
     echo "Prometheus Node Exporter DOWN" >&2
@@ -79,6 +81,13 @@ if curl --fail "http://127.0.0.1:${PROMETHEUS_BLACKBOX_PORT}/metrics"; then
     echo "Prometheus Blackbox Exporter UP"
 else
     echo "Prometheus Blackbox Exporter DOWN" >&2
+    exit 1
+fi
+
+if curl --fail "http://127.0.0.1:${GRAFANA_PORT}/api/health";then
+    echo "Grafana 服务运行正常"
+else
+    echo "Grafana 服务运行异常"
     exit 1
 fi
 

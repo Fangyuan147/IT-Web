@@ -166,6 +166,9 @@ done
 
 install -d -m 0755 /etc/prometheus/rules
 install -d -m 0755 /etc/grafana/provisioning/datasources
+install -d -m 0755 /etc/grafana/dashboards/ops-demo
+install -d -m 0755 /etc/grafana/provisioning/dashboards
+
 
 install -m 0644 \
     "$REPO_ROOT/config/prometheus/prometheus.yml" \
@@ -183,6 +186,15 @@ install -m 0644 \
     "$REPO_ROOT/config/grafana/provisioning/datasources/prometheus.yml" \
     /etc/grafana/provisioning/datasources/prometheus.yml
 
+install -m 0644 \
+    "$REPO_ROOT/config/grafana/dashboards/ops-demo-overview.json" \
+    /etc/grafana/dashboards/ops-demo/ops-demo-overview.json
+
+install -m 0644 \
+    "$REPO_ROOT/config/grafana/provisioning/dashboards/ops-demo.yml" \
+    /etc/grafana/provisioning/dashboards/ops-demo.yml    
+
+
 # 检测 Prometheus 配置，没有问题就启动 Prometheus 服务
 if ! promtool check config "$PROMETHEUS_CONFIG_FILE"; then
     echo "Prometheus 配置错误"
@@ -195,7 +207,9 @@ if ! promtool check rules "$PROMETHEUS_RULES_FILE"; then
 fi
 
 # 检测 Prometheus Blackbox 配置，没有问题就启动 Prometheus Blackbox 服务
-if ! promtool check config "$PROMETHEUS_BLACKBOX_CONFIG_FILE"; then
+if ! blackbox_exporter \
+    --config.file="$PROMETHEUS_BLACKBOX_CONFIG_FILE" \
+    --config.check; then
     echo "Blackbox 配置错误"
     exit 1
 fi
@@ -217,8 +231,8 @@ systemctl enable nginx
 systemctl restart nginx
 
 # 启动 Grafana 服务
-systemctl enable --now grafana-server
-systemctl status grafana-server --no-pager
+systemctl enable grafana-server
+systemctl restart grafana-server
 
 echo "项目部署完成"
 
