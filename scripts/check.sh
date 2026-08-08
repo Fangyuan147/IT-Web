@@ -8,11 +8,12 @@ set -Eeuo pipefail
 
 ROOT="$(cd -- "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/config/nginx/sites.conf"
+source "$ROOT/config/prometheus/prometheus.conf"
 
 echo "project root: ${ROOT}"
 
 #检测命令状态
-for command in curl grep nginx ss systemctl; do
+for command in curl grep nginx ss systemctl promtool; do
     command -v "$command" >/dev/null 2>&1 || {
         echo "FAIL: 缺少命令：$command" >&2
         exit 1
@@ -46,26 +47,116 @@ for site in "${SITES[@]}"; do
     echo "PASS: backend ${SERVICE_NAME} ${APP_PORT}"
 done
 
+if if curl --fail --silent --show-error -G \
+    --connect-timeout 3 --max-time 5 \
+    "http://127.0.0.1:${PROMETHEUS_PORT}/api/v1/query" \
+    --data-urlencode 'query=up' >/dev/null; then
+    echo "prometheus  UP"
+else
+    echo "prometheus DOWN" >&2
+    exit 1
+fi
+
+
+if if curl --fail --silent --show-error -G \
+    --connect-timeout 3 --max-time 5 \
+    "http://127.0.0.1:${PROMETHEUS_PORT}/api/v1/query" \
+    --data-urlencode 'query=up{job=ops-demo-http}' >/dev/null; then
+    echo "ops-demo-http  UP"
+else
+    echo "ops-demo-http  DOWN" >&2
+    exit 1
+fi
+
+if curl --fail http://127.0.0.1:${PROMETHEUS_NODE_PORT}/metrics; then
+    echo "Prometheus Node Exporter UP"
+else
+    echo "Prometheus Node Exporter DOWN" >&2
+    exit 1
+fi
+
+if curl --fail "http://127.0.0.1:${PROMETHEUS_BLACKBOX_PORT}/metrics"; then
+    echo "Prometheus Blackbox Exporter UP"
+else
+    echo "Prometheus Blackbox Exporter DOWN" >&2
+    exit 1
+fi
+
+# 检测prometheus服务运行和开机自启运行
+systemctl is-active --quiet prometheus || {
+    echo "FAIL: prometheus 未运行" >&2
+    exit 1
+}
+
+systemctl is-enabled --quiet prometheus || {
+    echo "FAIL: prometheus 未启用开机自启" >&2
+    exit 1
+}
+
+
+# 检测 Prometheus Node Exporter 服务运行和开机自启运行
+systemctl is-active --quiet prometheus-node-exporter || {
+    echo "FAIL: prometheus-node-exporter 未启用开机自启" >&2
+    exit 1
+}
+
+systemctl is-enabled --quiet prometheus-node-exporter || {
+    echo "FAIL: prometheus-node-exporter 未启用开机自启" >&2
+    exit 1
+}
+
+
+# 检测 Prometheus Blackbox Exporter 服务运行和开机自启运行
+systemctl is-active --quiet prometheus-blackbox-exporter || {
+    echo "FAIL: prometheus-blackbox-exporter 未运行" >&2
+    exit 1
+}
+
+systemctl is-enabled --quiet prometheus-blackbox-exporter || {
+    echo "FAIL: prometheus-blackbox-exporter 未启用开机自启" >&2
+    exit 1
+}
+
+
+# 检测 Grafana 服务运行和开机自启运行
+systemctl is-active --quiet grafana-server || {
+    echo "FAIL: grafana-server 未运行" >&2
+    exit 1
+}
+
+systemctl is-enabled --quiet grafana-server || {
+    echo "FAIL: grafana-server 未启用开机自启" >&2
+    exit 1
+}
+
+
 # 检测nginx服务运行和开机自启运行
 systemctl is-active --quiet nginx || {
     echo "FAIL: nginx 未运行" >&2
     exit 1
 }
+
 systemctl is-enabled --quiet nginx || {
     echo "FAIL: nginx 未启用开机自启" >&2
     exit 1
 }
+
 
 # 检测cron服务运行和开机自启运行
 systemctl is-active --quiet cron || {
     echo "FAIL: cron 未运行" >&2
     exit 1
 }
+
 systemctl is-enabled --quiet cron || {
     echo "FAIL: cron 未启用开机自启" >&2
     exit 1
 }
 
-curl --fail --silent --show-error --connect-timeout 3 --max-time 5 \
-    "http://127.0.0.1:${NGINX_PORT}/health" >/dev/null
-echo "PASS: nginx 功能全部齐全"
+
+if ! curl --fail --silent --show-error \
+    --connect-timeout 3 --max-time 5 \
+    "http://127.0.0.1:${NGINX_PORT}/health" >/dev/null; then
+    echo "FAIL: Nginx 健康检查失败" >&2
+    exit 1
+fi

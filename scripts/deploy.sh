@@ -10,6 +10,7 @@ set -Eeuo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"     #根目录ops-demo
 source "$REPO_ROOT/config/nginx/sites.conf"
+source "$REPO_ROOT/config/prometheus/prometheus.conf"
 
 
 # ============================================================ #
@@ -156,20 +157,68 @@ ln -sfn "$NGINX_CONF" "$NGINX_LINK"
 nginx -t
 systemctl daemon-reload
 
-# 运行服务
+# Web 运行服务
 for site in "${SITES[@]}"; do
     IFS='|' read -r SERVICE_NAME APP_PATH APP_PORT UPSTREAM_WEIGHT <<< "$site"
     systemctl enable "$SERVICE_NAME"
     systemctl restart "$SERVICE_NAME"
 done
 
-# 设置cron服务开机自启
+install -d -m 0755 /etc/prometheus/rules
+install -d -m 0755 /etc/grafana/provisioning/datasources
+
+install -m 0644 \
+    "$REPO_ROOT/config/prometheus/prometheus.yml" \
+    "$PROMETHEUS_CONFIG_FILE"
+
+install -m 0644 \
+    "$REPO_ROOT/config/prometheus/blackbox.yml" \
+    "$PROMETHEUS_BLACKBOX_CONFIG_FILE"
+
+install -m 0644 \
+    "$REPO_ROOT/config/prometheus/rules/ops-demo.yml" \
+    "$PROMETHEUS_RULES_FILE"
+
+install -m 0644 \
+    "$REPO_ROOT/config/grafana/provisioning/datasources/prometheus.yml" \
+    /etc/grafana/provisioning/datasources/prometheus.yml
+
+# 检测 Prometheus 配置，没有问题就启动 Prometheus 服务
+if ! promtool check config "$PROMETHEUS_CONFIG_FILE"; then
+    echo "Prometheus 配置错误"
+    exit 1
+fi
+
+if ! promtool check rules "$PROMETHEUS_RULES_FILE"; then
+    echo "Prometheus 规则错误"
+    exit 1
+fi
+
+# 检测 Prometheus Blackbox 配置，没有问题就启动 Prometheus Blackbox 服务
+if ! promtool check config "$PROMETHEUS_BLACKBOX_CONFIG_FILE"; then
+    echo "Blackbox 配置错误"
+    exit 1
+fi
+
+# 启动prometheus 服务
+systemctl enable --now prometheus
+systemctl enable --now prometheus-node-exporter
+systemctl enable --now prometheus-blackbox-exporter
+systemctl restart prometheus
+systemctl restart prometheus-node-exporter
+systemctl restart prometheus-blackbox-exporter
+
+# 启动 cron 服务
 systemctl enable cron
 systemctl restart cron
 
-# 设置nginx服务开机自启
+# 启动 Nginx 服务
 systemctl enable nginx
 systemctl restart nginx
+
+# 启动 Grafana 服务
+systemctl enable --now grafana-server
+systemctl status grafana-server --no-pager
 
 echo "项目部署完成"
 
