@@ -56,6 +56,16 @@ systemctl is-enabled --quiet nginx || {
     exit 1
 }
 
+# 检测cron服务运行和开机自启运行
+systemctl is-active --quiet cron || {
+    echo "FAIL: cron 未运行" >&2
+    exit 1
+}
+systemctl is-enabled --quiet cron || {
+    echo "FAIL: cron 未启用开机自启" >&2
+    exit 1
+}
+
 curl --fail --silent --show-error --connect-timeout 3 --max-time 5 \
     "http://127.0.0.1:${NGINX_PORT}/health" >/dev/null
 echo "PASS: nginx 功能全部齐全"

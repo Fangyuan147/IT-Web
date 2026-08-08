@@ -19,6 +19,7 @@ ops-demo/
 │   ├── ops-demo1/app.py
 │   └── ops-demo2/app.py
 ├── config/
+│   ├── cron/ops-demo-backup
 │   ├── logrotate/ops-demo
 │   └── nginx/sites.conf
 ├── scripts/
@@ -143,7 +144,7 @@ scripts/install.sh
 
 ~~~bash
 sudo apt update
-sudo apt install -y nginx python3 python3-venv python3-pip curl ufw logrotate
+sudo apt install -y nginx python3 python3-venv python3-pip curl ufw logrotate cron
 ~~~
 
 项目 Python 依赖记录在 `requirements.txt` 中，当前固定 Flask 和 Gunicorn 版本。
@@ -275,7 +276,7 @@ logrotate 配置文件位于仓库的 config/logrotate/ops-demo，预期为每�
 sudo logrotate -d /etc/logrotate.d/ops-demo
 ~~~
 
-健康检查会检查 Nginx、三个 systemd 服务和三个后端的 /health 接口，并为 HTTP 请求设置连接和总超时：
+健康检查会检查cron、Nginx、三个 systemd 服务和三个后端的 /health 接口，并为 HTTP 请求设置连接和总超时：
 
 ~~~bash
 sudo ./scripts/health-check.sh
@@ -296,7 +297,29 @@ sudo ./scripts/backup.sh
 sudo ls -lh /var/backups/ops-demo
 ~~~
 
-备份主要包括项目中的应用、配置、脚本和依赖清单；如果系统中存在相应文件，也会收集三个 systemd 服务、Nginx 站点和 logrotate 配置。它仍然不是完整的主机灾备，不包含用户数据库、所有系统状态和外部依赖。
+备份主要包括项目中的应用、配置、脚本和依赖清单；如果系统中存在相应文件，也会收集三个 systemd 服务、cron 定时规则、Nginx 站点和 logrotate 配置。它仍然不是完整的主机灾备，不包含用户数据库、所有系统状态和外部依赖。
+
+### cron 定时备份
+
+项目使用 cron 在每天凌晨 02:00 自动执行备份。仓库中的定时规则位于 `config/cron/ops-demo-backup`；运行 `scripts/deploy.sh` 后，该规则会被安装到 Ubuntu 的 `/etc/cron.d/ops-demo-backup`。
+
+~~~cron
+0 2 * * * root /opt/ops-demo/scripts/backup.sh >> /var/log/ops-demo/backup-cron.log 2>&1
+~~~
+
+这条规则表示：cron 以 `root` 身份执行 `/opt/ops-demo/scripts/backup.sh`，实际的压缩工作由脚本内的 `tar` 命令完成；正常输出和报错都会追加写入 `/var/log/ops-demo/backup-cron.log`。注意：`/etc/cron.d/` 中的规则比个人 `crontab -e` 多一列执行用户，因此这里的 `root` 不能省略。
+
+部署后可在 Ubuntu 上验证：
+
+~~~bash
+sudo systemctl is-active cron
+sudo cat /etc/cron.d/ops-demo-backup
+sudo /opt/ops-demo/scripts/backup.sh
+sudo ls -lh /var/backups/ops-demo
+sudo tail -n 50 /var/log/ops-demo/backup-cron.log
+~~~
+
+手动执行成功只能证明备份脚本可运行；还需要等到下一次 02:00 后检查日志和备份文件，才能确认 cron 已实际触发。恢复时请先解压到临时目录验证，不要直接覆盖运行中的项目。
 
 恢复测试应先解压到临时目录，确认文件完整后再决定是否替换运行目录，不要直接覆盖正在运行的项目。
 
@@ -368,6 +391,7 @@ git check-ignore -v .env test.key backups/example.tar.gz
 - Flask/Gunicorn 应用运行
 - systemd 服务托管和开机自启
 - Nginx 反向代理与权重转发
+- cron 定时储存备份
 - UFW 端口边界控制
 - 日志轮转、健康检查和项目文件备份
 - 基础故障排查和运维文档编写

@@ -1,0 +1,3 @@
+# cron 定时规则，每天凌晨2点开始执行backup.sh进行备份
+# 正常输出和错误输出都追加记录到backup-cron.log文件中
+0 2 * * * root /opt/ops-demo/scripts/backup.sh >> /var/log/ops-demo/backup-cron.log 2>&1

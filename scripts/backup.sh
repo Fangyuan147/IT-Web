@@ -14,6 +14,7 @@ if [[ "${EUID}" -ne 0 ]]; then
     exit 1
 fi
 
+# 判断是否定义了安装根目录，如果没有定义则使用默认的项目根目录
 # 判断定义的备份目录是否存在，如果不存在则使用默认备份目录
 INSTALL_ROOT="${INSTALL_ROOT:-$PROJECT_ROOT}"
 DEST="${BACKUP_DIR:-$BACKUP_ROOT}"
@@ -26,14 +27,16 @@ BACKUP="${DEST}/ops-demo_${DATE}.tar.gz"
 }
 mkdir -p "${DEST}"
 
-SYSTEM_ITEMS=()      # 记录系统配置文件和服务文件的路径
+SYSTEM_ITEMS=()
+# 备份脚本
 for item in \
     etc/systemd/system/ops-demo.service \
     etc/systemd/system/ops-demo1.service \
     etc/systemd/system/ops-demo2.service \
     etc/nginx/sites-available/ops-demo \
     etc/nginx/sites-enabled/ops-demo \
-    etc/logrotate.d/ops-demo; do
+    etc/logrotate.d/ops-demo \
+    etc/cron.d/ops-demo-backup; do
     if [[ -e "/$item" || -L "/$item" ]]; then
         SYSTEM_ITEMS+=("$item")  # 分别判断是否存在，存在则添加到数组中
     fi

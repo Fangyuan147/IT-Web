@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 
-# nginx服务状态和健康检测脚本
+# 各类服务状态和健康检测脚本
 
 
 set -Eeuo pipefail
@@ -13,6 +13,11 @@ source "$SCRIPT_DIR/../config/nginx/sites.conf"
 # 检测nginx运行状态
 systemctl is-active --quiet nginx || {
     echo "FAIL: nginx 未运行" >&2
+    exit 1
+}
+# 检测cron运行状态
+systemctl is-active --quiet cron || {
+    echo "FAIL: cron 未运行" >&2
     exit 1
 }
 

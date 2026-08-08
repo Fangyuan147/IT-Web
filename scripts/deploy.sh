@@ -13,6 +13,7 @@ source "$REPO_ROOT/config/nginx/sites.conf"
 
 
 # ============================================================ #
+CRON_CONF="/etc/cron.d/ops-demo-backup"
 NGINX_CONF="/etc/nginx/sites-available/ops-demo"
 NGINX_LINK="/etc/nginx/sites-enabled/ops-demo"
 LOGROTATE_CONF="/etc/logrotate.d/ops-demo"
@@ -98,6 +99,14 @@ Restart=on-failure
 RestartSec=5
 PrivateTmp=true
 NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
 
 [Install]
 WantedBy=multi-user.target
@@ -137,6 +146,9 @@ server {
 EOF
 } > "$NGINX_CONF"
 
+# 安装cron定时任务配置文件
+install -m 0644 "$REPO_ROOT/config/cron/ops-demo-backup" "$CRON_CONF"
+# 安装logrotate配置文件
 install -m 0644 "$REPO_ROOT/config/logrotate/ops-demo" "$LOGROTATE_CONF"
 ln -sfn "$NGINX_CONF" "$NGINX_LINK"
 
@@ -151,7 +163,11 @@ for site in "${SITES[@]}"; do
     systemctl restart "$SERVICE_NAME"
 done
 
-# 设置开机自启
+# 设置cron服务开机自启
+systemctl enable cron
+systemctl restart cron
+
+# 设置nginx服务开机自启
 systemctl enable nginx
 systemctl restart nginx
 

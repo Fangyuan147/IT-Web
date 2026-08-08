@@ -22,11 +22,11 @@ for command in apt-get systemctl grep useradd; do
 done
 
 apt-get update
-apt-get install -y curl iproute2 logrotate
+apt-get install -y curl iproute2 logrotate cron
 apt-get install -y nginx python3 python3-venv python3-pip
 
 # 检测安装环境
-for command in nginx python3 curl ip ss logrotate; do
+for command in nginx python3 curl ip ss logrotate cron; do
     command -v "$command" >/dev/null 2>&1 || {
         echo "缺少命令：$command" >&2
         exit 1
@@ -38,4 +38,3 @@ python3 --version
 curl --version
 
 echo "依赖安装完成，正在部署项目..."
-
