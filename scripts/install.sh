@@ -26,6 +26,15 @@ apt-get install -y curl iproute2 logrotate cron
 apt-get install -y nginx python3 python3-venv python3-pip
 apt-get install -y prometheus prometheus-node-exporter prometheus-blackbox-exporter
 apt-get install -y wget gnupg ca-certificates apt-transport-https
+apt-get install -y ufw
+
+# UFW部署只能在系统第一次部署
+# 部署流程  apt-get update -> apt-get install -y ufw ->
+# ufw allow OenSSH(放行SSH)
+# ufw allow 80/tcp（放行Nginx）
+# ufw allow 3000/tcp (其他电脑访问Grafana)
+# ufw status numberd 确认规则无误
+# ufw enable 启动
 
 # 安装 Grafana
 mkdir -p /etc/apt/keyrings
@@ -38,7 +47,7 @@ if ! command -v grafana-server >/dev/null 2>&1; then
 fi
 
 # 检测安装环境
-for command in nginx python3 curl ip ss logrotate cron ; do
+for command in nginx python3 curl ip ss logrotate cron ufw; do
     command -v "$command" >/dev/null 2>&1 || {
         echo "缺少命令：$command" >&2
         exit 1

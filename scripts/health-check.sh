@@ -21,36 +21,93 @@ systemctl is-active --quiet cron || {
     exit 1
 }
 
-if ! curl -G -s \
-    http://127.0.0.1:${PROMETHEUS_PORT}/api/v1/query \
-    --data-urlencode 'query=up' ; then
+if ! curl --fail --silent --show-error -G \
+    --connect-timeout 3 --max-time 5 \
+    http://127.0.0.1:${PROMETHEUS_PORT}/-/ready; then
     echo "prometheus  DOWN" >&2
     exit 1
 fi
 
+RESULT="$(
+    curl --fail --silent --show-error -G \
+        --connect-timeout 3 --max-time 5 \
+        "http://127.0.0.1:${PROMETHEUS_PORT}/api/v1/query" \
+        --data-urlencode 'query=probe_success{job="ops-demo-http"}'
+    )" || {
+    echo "FAIL: Prometheus HTTP 探测查询失败" >&2
+    exit 1
+}
 
-if ! curl --fail --silent --show-error \
-    --connect-timeout 3 --max-time 5 \
-    http://127.0.0.1:${PROMETHEUS_PORT}/api/v1/query \
-    --data-urlencode 'query=up{job="ops-demo-http"}'; then
-    echo "ops-demo-http  DOWN" >&2
+if ! printf '%s' "$RESULT" | python3 -c '
+import json
+import sys
+
+payload = json.load(sys.stdin)
+
+if payload.get("status") != "success":
+    raise SystemExit("Prometheus 返回状态不是 success")
+
+results = payload.get("data", {}).get("result", [])
+
+if len(results) != 4:
+    raise SystemExit(f"期望 4 个 HTTP 探测结果，实际得到 {len(results)} 个")
+
+if not all(
+    isinstance(item.get("value"), list)
+    and len(item["value"]) >= 2
+    and item["value"][1] == "1"
+    for item in results
+):
+    raise SystemExit("至少一个 HTTP 探测目标失败")
+'; then
+    echo "FAIL: HTTP 探测数据异常" >&2
     exit 1
 fi
 
+echo "PASS: 4 个 HTTP 探测目标均正常"
+
 if ! curl --fail --silent --show-error \
     --connect-timeout 3 --max-time 5 \
-    "http://127.0.0.1:${PROMETHEUS_NODE_PORT}/metrics"; then
+    "http://127.0.0.1:${PROMETHEUS_NODE_PORT}/metrics" >/dev/null; then
     echo "Prometheus Node Exporter DOWN" >&2
     exit 1
 fi
 
-if ! curl --fail --silent --show-error -G \
-    --connect-timeout 3 --max-time 5 \
-    "http://127.0.0.1:${PROMETHEUS_PORT}/api/v1/query" \
-    --data-urlencode 'query=up{job="node"}' >/dev/null; then
-    echo "Prometheus 未采集 Node Exporter" >&2
+NODE_RESULT="$(
+    curl --fail --silent --show-error -G \
+        --connect-timeout 3 --max-time 5 \
+        "http://127.0.0.1:${PROMETHEUS_PORT}/api/v1/query" \
+        --data-urlencode 'query=up{job="node"}'
+    )" || {
+    echo "FAIL: Prometheus Node Exporter 查询失败" >&2
+    exit 1
+}
+
+if ! printf '%s' "$NODE_RESULT" | python3 -c '
+import json
+import sys
+
+payload = json.load(sys.stdin)
+if payload.get("status") != "success":
+    raise SystemExit("Prometheus 返回状态不是 success")
+
+results = payload.get("data", {}).get("result", [])
+if not results:
+    raise SystemExit("没有找到 Node Exporter 采集结果")
+
+if not all(
+    isinstance(item.get("value"), list)
+    and len(item["value"]) >= 2
+    and item["value"][1] == "1"
+    for item in results
+):
+    raise SystemExit("Node Exporter 采集失败")
+'; then
+    echo "FAIL: Prometheus 未正常采集 Node Exporter" >&2
     exit 1
 fi
+
+echo "PASS: Prometheus Node Exporter 已被 Prometheus 正常采集"
 
 if ! curl --fail --silent --show-error \
     --connect-timeout 3 --max-time 5 \
@@ -60,7 +117,7 @@ if ! curl --fail --silent --show-error \
 fi
 
 if ! curl --fail "http://127.0.0.1:${GRAFANA_PORT}/api/health";then
-    echo "Grafana 连接 Prometheus 失败"
+    echo "Grafana 服务健康检查失败"
     exit 1
 fi
 

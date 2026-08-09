@@ -20,6 +20,7 @@ for command in curl grep nginx ss systemctl promtool; do
     }
 done
 
+
 python3 --version
 nginx -v 2>&1
 nginx -t
@@ -49,24 +50,52 @@ done
 
 if curl --fail --silent --show-error -G \
     --connect-timeout 3 --max-time 5 \
-    "http://127.0.0.1:${PROMETHEUS_PORT}/api/v1/query" \
-    --data-urlencode 'query=up' >/dev/null; then
-    echo "prometheus  UP"
+    "http://127.0.0.1:${PROMETHEUS_PORT}/-/ready" >/dev/null; then
+    echo "PASS: Prometheus 已就绪"
 else
-    echo "prometheus DOWN" >&2
+    echo "FAIL: Prometheus 未就绪" >&2
     exit 1
 fi
 
+#
+RESULT="$(
+    curl --fail --silent --show-error -G \
+        --connect-timeout 3 --max-time 5 \
+        "http://127.0.0.1:${PROMETHEUS_PORT}/api/v1/query" \
+        --data-urlencode 'query=probe_success{job="ops-demo-http"}'
+)" || {
+    echo "FAIL: Prometheus 查询失败" >&2
+    exit 1
+}
 
-if curl --fail --silent --show-error -G \
-    --connect-timeout 3 --max-time 5 \
-    "http://127.0.0.1:${PROMETHEUS_PORT}/api/v1/query" \
-    --data-urlencode 'query=up{job="ops-demo-http"}' >/dev/null; then
-    echo "ops-demo-http  UP"
-else
-    echo "ops-demo-http  DOWN" >&2
+if ! printf '%s' "$RESULT" | python3 -c '
+import json
+import sys
+
+payload = json.load(sys.stdin)
+
+if payload.get("status") != "success":
+    raise SystemExit("Prometheus 返回状态不是 success")
+
+results = payload.get("data", {}).get("result", [])
+
+if len(results) != 4:
+    raise SystemExit(f"期望 4 个 HTTP 探测结果，实际得到 {len(results)} 个")
+
+if not all(
+    isinstance(item.get("value"), list)
+    and len(item["value"]) >= 2
+    and item["value"][1] == "1"
+    for item in results
+):
+    raise SystemExit("至少一个 HTTP 探测目标失败")
+'; then
+    echo "FAIL: HTTP 探测数据异常" >&2
     exit 1
 fi
+
+echo "PASS: 4 个 HTTP 探测目标均正常"
+#
 
 if curl --fail --silent --show-error \
     --connect-timeout 3 --max-time 5 \

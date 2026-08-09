@@ -183,17 +183,15 @@ install -m 0644 \
     "$PROMETHEUS_RULES_FILE"
 
 install -m 0644 \
-    "$REPO_ROOT/config/grafana/provisioning/datasources/prometheus.yml" \
-    /etc/grafana/provisioning/datasources/prometheus.yml
-
+    "$REPO_ROOT/config/grafana/provisioning/prometheus.yml" \
+    "$GRAFANA_PROMETHEUS_FILE"
 install -m 0644 \
     "$REPO_ROOT/config/grafana/dashboards/ops-demo-overview.json" \
-    /etc/grafana/dashboards/ops-demo/ops-demo-overview.json
+    "$GRAFANA_DASHBOARD_JSON_FILE"
 
 install -m 0644 \
     "$REPO_ROOT/config/grafana/provisioning/dashboards/ops-demo.yml" \
-    /etc/grafana/provisioning/dashboards/ops-demo.yml    
-
+    "$GRAFANA_DASHBOARD_OPS_DEMO_FILE"
 
 # 检测 Prometheus 配置，没有问题就启动 Prometheus 服务
 if ! promtool check config "$PROMETHEUS_CONFIG_FILE"; then
@@ -213,6 +211,9 @@ if ! blackbox_exporter \
     echo "Blackbox 配置错误"
     exit 1
 fi
+
+# 查看防火墙配置
+ufw status verbose
 
 # 启动prometheus 服务
 systemctl enable --now prometheus
