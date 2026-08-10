@@ -48,6 +48,7 @@ for site in "${SITES[@]}"; do
     echo "PASS: backend ${SERVICE_NAME} ${APP_PORT}"
 done
 
+# 检测 prometheus 的请求是否通过
 if curl --fail --silent --show-error -G \
     --connect-timeout 3 --max-time 5 \
     "http://127.0.0.1:${PROMETHEUS_PORT}/-/ready" >/dev/null; then
@@ -57,7 +58,7 @@ else
     exit 1
 fi
 
-#
+# 检测prometheus中http服务是否全部启用
 RESULT="$(
     curl --fail --silent --show-error -G \
         --connect-timeout 3 --max-time 5 \
@@ -68,15 +69,18 @@ RESULT="$(
     exit 1
 }
 
+# 用 python 的json库判断对prometheus的http请求是否正常
 if ! printf '%s' "$RESULT" | python3 -c '
 import json
 import sys
 
 payload = json.load(sys.stdin)
 
+# 请求获取文件的状态，并判断文件状态是否为成功。
 if payload.get("status") != "success":
     raise SystemExit("Prometheus 返回状态不是 success")
 
+# results 记录请求次数,正常情况下是4次
 results = payload.get("data", {}).get("result", [])
 
 if len(results) != 4:
@@ -97,6 +101,7 @@ fi
 echo "PASS: 4 个 HTTP 探测目标均正常"
 #
 
+# 访问prometheus-blackbox-exporter的指标接口
 if curl --fail --silent --show-error \
     --connect-timeout 3 --max-time 5 \
     "http://127.0.0.1:${PROMETHEUS_NODE_PORT}/metrics" >/dev/null; then
@@ -106,13 +111,17 @@ else
     exit 1
 fi
 
-if curl --fail "http://127.0.0.1:${PROMETHEUS_BLACKBOX_PORT}/metrics"; then
+# 访问prometheus-blackbox-exporter的指标接口
+if curl --fail --silent --show-error \
+    --connect-timeout 3 --max-time 5 \
+    "http://127.0.0.1:${PROMETHEUS_BLACKBOX_PORT}/metrics" >/dev/null; then
     echo "Prometheus Blackbox Exporter UP"
 else
     echo "Prometheus Blackbox Exporter DOWN" >&2
     exit 1
 fi
 
+# 检测Grafana接口健康状态
 if curl --fail "http://127.0.0.1:${GRAFANA_PORT}/api/health";then
     echo "Grafana 服务运行正常"
 else

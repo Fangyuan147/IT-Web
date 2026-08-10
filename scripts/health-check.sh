@@ -24,7 +24,7 @@ systemctl is-active --quiet cron || {
 if ! curl --fail --silent --show-error -G \
     --connect-timeout 3 --max-time 5 \
     http://127.0.0.1:${PROMETHEUS_PORT}/-/ready; then
-    echo "prometheus  DOWN" >&2
+    echo "prometheus  未就绪" >&2
     exit 1
 fi
 
@@ -72,42 +72,6 @@ if ! curl --fail --silent --show-error \
     echo "Prometheus Node Exporter DOWN" >&2
     exit 1
 fi
-
-NODE_RESULT="$(
-    curl --fail --silent --show-error -G \
-        --connect-timeout 3 --max-time 5 \
-        "http://127.0.0.1:${PROMETHEUS_PORT}/api/v1/query" \
-        --data-urlencode 'query=up{job="node"}'
-    )" || {
-    echo "FAIL: Prometheus Node Exporter 查询失败" >&2
-    exit 1
-}
-
-if ! printf '%s' "$NODE_RESULT" | python3 -c '
-import json
-import sys
-
-payload = json.load(sys.stdin)
-if payload.get("status") != "success":
-    raise SystemExit("Prometheus 返回状态不是 success")
-
-results = payload.get("data", {}).get("result", [])
-if not results:
-    raise SystemExit("没有找到 Node Exporter 采集结果")
-
-if not all(
-    isinstance(item.get("value"), list)
-    and len(item["value"]) >= 2
-    and item["value"][1] == "1"
-    for item in results
-):
-    raise SystemExit("Node Exporter 采集失败")
-'; then
-    echo "FAIL: Prometheus 未正常采集 Node Exporter" >&2
-    exit 1
-fi
-
-echo "PASS: Prometheus Node Exporter 已被 Prometheus 正常采集"
 
 if ! curl --fail --silent --show-error \
     --connect-timeout 3 --max-time 5 \

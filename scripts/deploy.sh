@@ -164,31 +164,28 @@ for site in "${SITES[@]}"; do
     systemctl restart "$SERVICE_NAME"
 done
 
+# 创建prometheus和grafana文件目录并配置权限
 install -d -m 0755 /etc/prometheus/rules
 install -d -m 0755 /etc/grafana/provisioning/datasources
 install -d -m 0755 /etc/grafana/dashboards/ops-demo
 install -d -m 0755 /etc/grafana/provisioning/dashboards
 
-
+# install -m 把脚本的文件内容复制到系统文件中
 install -m 0644 \
     "$REPO_ROOT/config/prometheus/prometheus.yml" \
     "$PROMETHEUS_CONFIG_FILE"
-
 install -m 0644 \
     "$REPO_ROOT/config/prometheus/blackbox.yml" \
     "$PROMETHEUS_BLACKBOX_CONFIG_FILE"
-
 install -m 0644 \
     "$REPO_ROOT/config/prometheus/rules/ops-demo.yml" \
     "$PROMETHEUS_RULES_FILE"
-
 install -m 0644 \
     "$REPO_ROOT/config/grafana/provisioning/prometheus.yml" \
     "$GRAFANA_PROMETHEUS_FILE"
 install -m 0644 \
     "$REPO_ROOT/config/grafana/dashboards/ops-demo-overview.json" \
     "$GRAFANA_DASHBOARD_JSON_FILE"
-
 install -m 0644 \
     "$REPO_ROOT/config/grafana/provisioning/dashboards/ops-demo.yml" \
     "$GRAFANA_DASHBOARD_OPS_DEMO_FILE"
@@ -198,7 +195,6 @@ if ! promtool check config "$PROMETHEUS_CONFIG_FILE"; then
     echo "Prometheus 配置错误"
     exit 1
 fi
-
 if ! promtool check rules "$PROMETHEUS_RULES_FILE"; then
     echo "Prometheus 规则错误"
     exit 1
