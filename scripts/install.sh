@@ -67,7 +67,7 @@ python3 --version
 curl --version
 prometheus --version
 prometheus-node-exporter --version
-blackbox_exporter --version
+prometheus-blackbox-exporter --version
 grafana-server --version
 
 

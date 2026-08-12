@@ -201,7 +201,7 @@ if ! promtool check rules "$PROMETHEUS_RULES_FILE"; then
 fi
 
 # 检测 Prometheus Blackbox 配置，没有问题就启动 Prometheus Blackbox 服务
-if ! blackbox_exporter \
+if ! prometheus-blackbox-exporter \
     --config.file="$PROMETHEUS_BLACKBOX_CONFIG_FILE" \
     --config.check; then
     echo "Blackbox 配置错误"
