@@ -27,11 +27,6 @@ scrape_configs:
 
     static_configs:
       - targets:
-          - http://127.0.0.1/health
-        labels:
-          service: localhost
-
-      - targets:
           - http://127.0.0.1:8000/health
         labels:
           service: ops-demo

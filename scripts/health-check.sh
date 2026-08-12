@@ -49,8 +49,8 @@ if payload.get("status") != "success":
 
 results = payload.get("data", {}).get("result", [])
 
-if len(results) != 4:
-    raise SystemExit(f"期望 4 个 HTTP 探测结果，实际得到 {len(results)} 个")
+if len(results) != 3:
+    raise SystemExit(f"期望 3 个 HTTP 探测结果，实际得到 {len(results)} 个")
 
 if not all(
     isinstance(item.get("value"), list)

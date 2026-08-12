@@ -80,11 +80,11 @@ payload = json.load(sys.stdin)
 if payload.get("status") != "success":
     raise SystemExit("Prometheus 返回状态不是 success")
 
-# results 记录请求次数,正常情况下是4次
+# results 记录请求次数,正常情况下是3次
 results = payload.get("data", {}).get("result", [])
 
-if len(results) != 4:
-    raise SystemExit(f"期望 4 个 HTTP 探测结果，实际得到 {len(results)} 个")
+if len(results) != 3:
+    raise SystemExit(f"期望 3 个 HTTP 探测结果，实际得到 {len(results)} 个")
 
 if not all(
     isinstance(item.get("value"), list)
@@ -98,7 +98,7 @@ if not all(
     exit 1
 fi
 
-echo "PASS: 4 个 HTTP 探测目标均正常"
+echo "PASS: 3 个 HTTP 探测目标均正常"
 #
 
 # 访问prometheus-blackbox-exporter的指标接口
