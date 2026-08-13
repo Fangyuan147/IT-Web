@@ -64,7 +64,7 @@ if not all(
     exit 1
 fi
 
-echo "PASS: 4 个 HTTP 探测目标均正常"
+echo "PASS: 3 个 HTTP 探测目标均正常"
 
 if ! curl --fail --silent --show-error \
     --connect-timeout 3 --max-time 5 \

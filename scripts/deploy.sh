@@ -231,6 +231,27 @@ systemctl restart nginx
 systemctl enable grafana-server
 systemctl restart grafana-server
 
+# 等待Grafana服务启动，否则会导致部署失败
+echo "等待 Grafana 启动..."
+
+for attempt in {1..30}; do
+    if curl --fail --silent --show-error \
+        "http://127.0.0.1:${GRAFANA_PORT}/api/health" \
+        >/dev/null 2>&1; then
+        echo "PASS: Grafana 已就绪"
+        break
+    fi
+
+    if [[ "$attempt" -eq 30 ]]; then
+        echo "FAIL: Grafana 在 30 秒内未就绪" >&2
+        systemctl status grafana-server --no-pager >&2
+        journalctl -u grafana-server -n 50 --no-pager >&2
+        exit 1
+    fi
+
+    sleep 1
+done
+
 echo "项目部署完成"
 
 echo "正在检测服务运行状态和健康状况..."
