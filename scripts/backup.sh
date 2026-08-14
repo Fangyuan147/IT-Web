@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+git#!/usr/bin/env bash
 
 
 # 自动备份脚本
