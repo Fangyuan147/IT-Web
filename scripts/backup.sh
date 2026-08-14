@@ -14,18 +14,14 @@ if [[ "${EUID}" -ne 0 ]]; then
     exit 1
 fi
 
-# 判断是否定义了安装根目录，如果没有定义则使用默认的项目根目录
-# 判断定义的备份目录是否存在，如果不存在则使用默认备份目录
-INSTALL_ROOT="${INSTALL_ROOT:-$PROJECT_ROOT}"
-DEST="${BACKUP_DIR:-$BACKUP_ROOT}"
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-7}"
 DATE="$(date '+%F_%H-%M-%S')"
-BACKUP="${DEST}/ops-demo_${DATE}.tar.gz"
-[[ -d "${INSTALL_ROOT}/apps" ]] || {
-    echo "缺少应用目录：${INSTALL_ROOT}/apps" >&2
+BACKUP="${BACKUP_ROOT}/ops-demo_${DATE}.tar.gz"
+[[ -d "${PROJECT_ROOT}/apps" ]] || {
+    echo "缺少应用目录：${PROJECT_ROOT}/apps" >&2
     exit 1
 }
-mkdir -p "${DEST}"
+mkdir -p "${BACKUP_ROOT}"
 
 SYSTEM_ITEMS=()
 # 备份脚本
@@ -50,11 +46,11 @@ tar \
     --exclude='.env' \
     --exclude='.env.*' \
     -czf "$BACKUP" \
-    -C "$INSTALL_ROOT" apps config scripts requirements.txt \
+    -C "$PROJECT_ROOT" apps config scripts requirements.txt \
     -C / "${SYSTEM_ITEMS[@]}"
 
 # 查找并删除超过保留天数的备份文件
-find "$DEST" -type f -name 'ops-demo_*.tar.gz' \
+find "$BACKUP_ROOT" -type f -name 'ops-demo_*.tar.gz' \
     -mtime "+$RETENTION_DAYS" -delete
 
 printf '%s backup=%s\n' "$(date '+%F %T')" "$BACKUP"

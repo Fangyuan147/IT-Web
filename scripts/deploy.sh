@@ -178,6 +178,9 @@ install -m 0644 \
     "$REPO_ROOT/config/prometheus/blackbox.yml" \
     "$PROMETHEUS_BLACKBOX_CONFIG_FILE"
 install -m 0644 \
+    "$REPO_ROOT/config/prometheus/alertmanager.yml" \
+    "$PROMETHEUS_ALERTMANAGER_FILE"
+install -m 0644 \
     "$REPO_ROOT/config/prometheus/rules/ops-demo.yml" \
     "$PROMETHEUS_RULES_FILE"
 install -m 0644 \
@@ -190,17 +193,19 @@ install -m 0644 \
     "$REPO_ROOT/config/grafana/provisioning/dashboards/ops-demo.yml" \
     "$GRAFANA_DASHBOARD_OPS_DEMO_FILE"
 
-# 检测 Prometheus 配置，没有问题就启动 Prometheus 服务
+# 检测 Prometheus 配置
 if ! promtool check config "$PROMETHEUS_CONFIG_FILE"; then
     echo "Prometheus 配置错误"
     exit 1
 fi
+
+# 检测Prometheus rule配置
 if ! promtool check rules "$PROMETHEUS_RULES_FILE"; then
     echo "Prometheus 规则错误"
     exit 1
 fi
 
-# 检测 Prometheus Blackbox 配置，没有问题就启动 Prometheus Blackbox 服务
+# 检测 Prometheus Blackbox 配置
 if ! prometheus-blackbox-exporter \
     --config.file="$PROMETHEUS_BLACKBOX_CONFIG_FILE" \
     --config.check; then
@@ -208,6 +213,11 @@ if ! prometheus-blackbox-exporter \
     exit 1
 fi
 
+# 检测Prometheus alertmanager 配置
+if ! amtool check-config "$PROMETHEUS_ALERTMANAGER_FILE";then
+    echo "alertmanager 配置错误"
+    exit 1
+fi
 # 查看防火墙配置
 ufw status verbose
 
@@ -215,9 +225,11 @@ ufw status verbose
 systemctl enable --now prometheus
 systemctl enable --now prometheus-node-exporter
 systemctl enable --now prometheus-blackbox-exporter
+systemctl enable --now prometheus-alertmanager
 systemctl restart prometheus
 systemctl restart prometheus-node-exporter
 systemctl restart prometheus-blackbox-exporter
+systemctl restart prometheus-alertmanager
 
 # 启动 cron 服务
 systemctl enable cron

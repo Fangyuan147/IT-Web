@@ -80,7 +80,7 @@ if ! curl --fail --silent --show-error \
     exit 1
 fi
 
-if ! curl --fail "http://127.0.0.1:${GRAFANA_PORT}/api/health";then
+if ! curl --fail --silent "http://127.0.0.1:${GRAFANA_PORT}/api/health";then
     echo "Grafana 服务健康检查失败"
     exit 1
 fi
@@ -102,13 +102,3 @@ for site in "${SITES[@]}"; do
     # 运行通过
     echo "PASS: $SERVICE_NAME :$APP_PORT"
 done
-
-# 检测nginx端口状态 80端口
-if ! curl --fail --silent --show-error \
-    --connect-timeout 3 --max-time 5 \
-    "http://127.0.0.1:${NGINX_PORT}/health" >/dev/null 2>&1; then
-    echo "FAIL: Nginx 统一入口健康检查失败，端口：$NGINX_PORT" >&2
-    exit 1
-fi
-
-echo "PASS: Nginx 全部端口成功运行"

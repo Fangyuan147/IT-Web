@@ -24,7 +24,7 @@ done
 apt-get update
 apt-get install -y curl iproute2 logrotate cron
 apt-get install -y nginx python3 python3-venv python3-pip
-apt-get install -y prometheus prometheus-node-exporter prometheus-blackbox-exporter
+apt-get install -y prometheus prometheus-node-exporter prometheus-blackbox-exporter prometheus-alertmanager
 apt-get install -y wget gnupg ca-certificates apt-transport-https
 apt-get install -y ufw
 
@@ -53,7 +53,7 @@ for command in nginx python3 curl ip ss logrotate cron ufw; do
         exit 1
     }
 done
-for command in prometheus promtool prometheus-node-exporter prometheus-blackbox-exporter grafana-server; do
+for command in prometheus promtool prometheus-node-exporter prometheus-blackbox-exporter prometheus-alertmanager grafana-server; do
     command -v "$command" >/dev/null 2>&1 || {
         echo "缺少安装包：$command" >&2
         exit 1
@@ -68,6 +68,7 @@ curl --version
 prometheus --version
 prometheus-node-exporter --version
 prometheus-blackbox-exporter --version
+prometheus-alertmanager --version
 grafana-server --version
 
 

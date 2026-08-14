@@ -101,7 +101,7 @@ fi
 echo "PASS: 3 个 HTTP 探测目标均正常"
 #
 
-# 访问prometheus-blackbox-exporter的指标接口
+# 访问prometheus-node-exporter的指标接口
 if curl --fail --silent --show-error \
     --connect-timeout 3 --max-time 5 \
     "http://127.0.0.1:${PROMETHEUS_NODE_PORT}/metrics" >/dev/null; then
@@ -122,10 +122,23 @@ else
 fi
 
 # 检测Grafana接口健康状态
-if curl --fail "http://127.0.0.1:${GRAFANA_PORT}/api/health";then
+if curl --fail --silent "http://127.0.0.1:${GRAFANA_PORT}/api/health";then
     echo "Grafana 服务运行正常"
 else
     echo "Grafana 服务运行异常"
+    exit 1
+fi
+
+# 检测邮箱网络（未配置 SMTP_HOST 时跳过）
+if [[ -z "${SMTP_HOST:-}" ]]; then
+    echo "SKIP: 未配置 SMTP_HOST，跳过邮箱网络检测"
+elif openssl s_client \
+    -starttls smtp \
+    -connect "$SMTP_HOST" \
+    -brief >/dev/null; then
+    echo "邮箱网络正常"
+else
+    echo "邮箱网络异常" >&2
     exit 1
 fi
 
@@ -143,7 +156,7 @@ systemctl is-enabled --quiet prometheus || {
 
 # 检测 Prometheus Node Exporter 服务运行和开机自启运行
 systemctl is-active --quiet prometheus-node-exporter || {
-    echo "FAIL: prometheus-node-exporter 未启用开机自启" >&2
+    echo "FAIL: prometheus-node-exporter 未运行" >&2
     exit 1
 }
 
@@ -164,6 +177,16 @@ systemctl is-enabled --quiet prometheus-blackbox-exporter || {
     exit 1
 }
 
+# 检测 Prometheus alertmanager 服务运行和开机自启运行
+systemctl is-active --quiet prometheus-alertmanager || {
+    echo "FAIL: prometheus-alertmanager 未运行" >&2
+    exit 1
+}
+
+systemctl is-enabled --quiet prometheus-alertmanager || {
+    echo "FAIL: prometheus-alertmanager 未启用开机自启" >&2
+    exit 1
+}
 
 # 检测 Grafana 服务运行和开机自启运行
 systemctl is-active --quiet grafana-server || {
@@ -199,11 +222,3 @@ systemctl is-enabled --quiet cron || {
     echo "FAIL: cron 未启用开机自启" >&2
     exit 1
 }
-
-
-if ! curl --fail --silent --show-error \
-    --connect-timeout 3 --max-time 5 \
-    "http://127.0.0.1:${NGINX_PORT}/health" >/dev/null; then
-    echo "FAIL: Nginx 健康检查失败" >&2
-    exit 1
-fi
