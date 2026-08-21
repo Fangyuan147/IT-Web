@@ -222,3 +222,5 @@ systemctl is-enabled --quiet cron || {
     echo "FAIL: cron 未启用开机自启" >&2
     exit 1
 }
+
+echo "项目服务全部检测完毕,无异常······"
