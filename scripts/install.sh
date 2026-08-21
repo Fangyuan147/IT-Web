@@ -38,10 +38,17 @@ apt-get install -y ufw
 
 # 安装 Grafana
 mkdir -p /etc/apt/keyrings
+
 if ! command -v grafana-server >/dev/null 2>&1; then
     echo "正在安装 Grafana..."
-    wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | tee /etc/apt/keyrings/grafana.gpg >/dev/null
-    echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | tee /etc/apt/sources.list.d/grafana.list
+
+    wget -q -O - https://apt.grafana.com/gpg.key \
+      | gpg --dearmor \
+      | tee /etc/apt/keyrings/grafana.gpg >/dev/null
+
+    echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://mirrors.tuna.tsinghua.edu.cn/grafana/apt stable main" \
+      | tee /etc/apt/sources.list.d/grafana.list
+
     apt-get update
     apt-get install -y grafana
 fi
