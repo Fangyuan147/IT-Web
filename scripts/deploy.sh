@@ -268,4 +268,4 @@ echo "项目部署完成"
 
 echo "正在检测服务运行状态和健康状况..."
 # 运行结束后，检测服务运行状况
-"$SCRIPT_DIR/check.sh"
+bash $SCRIPT_DIR/check.sh

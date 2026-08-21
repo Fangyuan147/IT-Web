@@ -80,3 +80,5 @@ grafana-server --version
 
 
 echo "依赖安装完成，正在部署项目..."
+
+"$SCRIPT_DIR/deploy.sh"
